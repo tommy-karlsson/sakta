@@ -11,29 +11,25 @@ import org.awaitility.Awaitility;
 
 public class SaktaMassiveTellToActorGroup {
     static void run(int messageCount, int actorCount, ActorSystem actorSystem) {
-        try {
-            OutstandingMessages outstanding = new OutstandingMessages(messageCount * actorCount);
+        OutstandingMessages outstanding = new OutstandingMessages(messageCount * actorCount);
 
-            for (int a = 0; a < actorCount; a++) {
-                ActorRef<Actor> runner = actorSystem.getOrCreateActorRef(a, Actor::new, Actor.class);
-                int aa = a;
-                for (int m = 0; m < messageCount; m++) {
-                    int mm = m;
-                    outstanding.expect(aa * messageCount + mm);
-                    runner.ask(r -> r.run(new int[] {aa, mm})).thenAccept(response -> {
-                        int actorNo = response[0];
-                        int messageNo = response[1];
-                        outstanding.received(actorNo * messageCount + messageNo);
-                    });
-                }
+        for (int a = 0; a < actorCount; a++) {
+            ActorRef<Actor> runner = actorSystem.getOrCreateActorRef(a, Actor::new, Actor.class);
+            int aa = a;
+            for (int m = 0; m < messageCount; m++) {
+                int mm = m;
+                outstanding.expect(aa * messageCount + mm);
+                runner.ask(r -> r.run(new int[] {aa, mm})).thenAccept(response -> {
+                    int actorNo = response[0];
+                    int messageNo = response[1];
+                    outstanding.received(actorNo * messageCount + messageNo);
+                });
             }
-
-            Awaitility.await()
-                    .atMost(30, TimeUnit.SECONDS)
-                    .until(outstanding::allReceived);
-        } finally {
-            BenchmarkDefaults.closeAndAwait(actorSystem);
         }
+
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(outstanding::allReceived);
     }
 
     /**

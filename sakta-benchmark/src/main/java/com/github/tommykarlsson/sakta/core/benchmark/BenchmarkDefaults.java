@@ -29,10 +29,9 @@ final class BenchmarkDefaults {
     }
 
     /**
-     * Closes the actor system and waits for its actors, so that one invocation's teardown is paid
-     * for by that invocation. {@link ActorSystem#close()} on its own returns while the actor threads
-     * are still winding down, and they then compete with the next invocation, which made roughly one
-     * invocation in three run several times slower than the rest.
+     * Closes the actor system and waits for its actors. {@link ActorSystem#close()} on its own
+     * returns while the actor threads are still winding down, and they then compete with the next
+     * invocation, which made roughly one invocation in three run several times slower than the rest.
      */
     static void closeAndAwait(ActorSystem actorSystem) {
         try {

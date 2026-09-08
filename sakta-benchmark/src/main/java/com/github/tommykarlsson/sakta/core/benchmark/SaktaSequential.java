@@ -15,8 +15,6 @@ public class SaktaSequential {
             completion.get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
-        } finally {
-            BenchmarkDefaults.closeAndAwait(actorSystem);
         }
     }
 
