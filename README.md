@@ -13,7 +13,7 @@ the called method. The user of an actor will receive the result from `ask` in a 
 invocation is asynchronous by nature. Creation of the actor itself is left to the user of the framework, to allow 
 injection of any dependencies etc. into the actor.
 
-The implementation leverages virtual threads, and therefore requires Java 21 (or later).
+The implementation leverages virtual threads, and is built for Java 25 (or later).
 
 One of the implementation goals is to _not_ produce excessive amounts of garbage on the heap. Sakta is however not
 garbage free (or close to garbage free), but relatively low-garbage.
