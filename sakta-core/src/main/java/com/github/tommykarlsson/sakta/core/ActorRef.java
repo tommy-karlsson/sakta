@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.core;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -48,7 +49,18 @@ public interface ActorRef<T> {
     void start();
 
     /**
-     * Stop the actor ref.
+     * Stop the actor ref. This only signals the actor to stop, and returns without waiting for it
+     * to finish; use {@link #awaitStopped(Duration)} when that matters.
      */
     void stop();
+
+    /**
+     * Waits for the actor to finish processing. Only meaningful once {@link #stop()} has been
+     * called, as nothing else asks the actor to stop.
+     *
+     * @param timeout How long to wait.
+     * @return true if the actor had finished within the timeout.
+     * @throws InterruptedException If the waiting thread is interrupted.
+     */
+    boolean awaitStopped(Duration timeout) throws InterruptedException;
 }

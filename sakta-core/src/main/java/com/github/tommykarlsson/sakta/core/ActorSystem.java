@@ -5,6 +5,7 @@ import com.github.tommykarlsson.sakta.core.impl.UnboundedMailboxFactory;
 import com.github.tommykarlsson.sakta.core.impl.VirtualThreadPerActorScheduler;
 
 import java.lang.ref.Cleaner;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,8 +51,25 @@ public class ActorSystem implements AutoCloseable {
         return actorRef;
     }
 
+    /**
+     * Stops the actors and returns without waiting for them to finish. Their threads are still
+     * winding down when this returns, where they compete with whatever runs next; use
+     * {@link #close(Duration)} when that matters.
+     */
     public void close() {
         cleanable.clean();
+    }
+
+    /**
+     * Stops the actors and waits for them to finish.
+     *
+     * @param timeout How long to wait for all of the actors together.
+     * @return true if every actor had finished within the timeout.
+     * @throws InterruptedException If the waiting thread is interrupted.
+     */
+    public boolean close(Duration timeout) throws InterruptedException {
+        close();
+        return state.awaitStopped(timeout);
     }
 
     private record ActorKey(Object address, Class<?> actorClass) { }
@@ -67,6 +85,24 @@ public class ActorSystem implements AutoCloseable {
         @Override
         public void run() {
             actors.values().forEach(ActorRef::stop);
+        }
+
+        /**
+         * Waits for actors that {@link #run()} has already signalled. Signalling every actor before
+         * waiting for any of them is what lets them wind down alongside each other, rather than one
+         * at a time.
+         */
+        boolean awaitStopped(Duration timeout) throws InterruptedException {
+            long deadline = System.nanoTime() + timeout.toNanos();
+            boolean allStopped = true;
+            for (ActorRef<?> actorRef : actors.values()) {
+                Duration remaining = Duration.ofNanos(deadline - System.nanoTime());
+                if (remaining.isNegative() || remaining.isZero()) {
+                    return false;
+                }
+                allStopped &= actorRef.awaitStopped(remaining);
+            }
+            return allStopped;
         }
     }
 }

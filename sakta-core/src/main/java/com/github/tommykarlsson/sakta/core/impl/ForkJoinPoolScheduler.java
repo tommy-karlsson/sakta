@@ -2,19 +2,50 @@ package com.github.tommykarlsson.sakta.core.impl;
 
 import com.github.tommykarlsson.sakta.core.Disposable;
 import com.github.tommykarlsson.sakta.core.Mailbox;
+import com.github.tommykarlsson.sakta.core.Schedule;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 
+import java.time.Duration;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ForkJoinPoolScheduler implements Scheduler {
 
+    /** How often {@link Schedule#awaitStopped(Duration)} looks at a drain it is waiting out. */
+    private static final Duration POLL_INTERVAL = Duration.ofMillis(1);
+
     private final ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
 
     @Override
-    public Disposable schedule(Mailbox mailbox) {
+    public Schedule schedule(Mailbox mailbox) {
         MailboxDrain drain = new MailboxDrain(mailbox, forkJoinPool);
-        return mailbox.onAdd(drain::scheduleIfIdle);
+        return new DrainSchedule(mailbox.onAdd(drain::scheduleIfIdle), drain);
+    }
+
+    /**
+     * Stops feeding a mailbox to the pool, and waits out the drain that may still be running.
+     *
+     * <p>The wait polls rather than being signalled, to keep the drain's own bookkeeping free of
+     * anything the sending path would have to pay for.
+     */
+    private record DrainSchedule(Disposable listener, MailboxDrain drain) implements Schedule {
+
+        @Override
+        public void dispose() {
+            listener.dispose();
+        }
+
+        @Override
+        public boolean awaitStopped(Duration timeout) throws InterruptedException {
+            long deadline = System.nanoTime() + timeout.toNanos();
+            while (drain.isRunning()) {
+                if (System.nanoTime() >= deadline) {
+                    return false;
+                }
+                Thread.sleep(POLL_INTERVAL);
+            }
+            return true;
+        }
     }
 
     /**
@@ -40,6 +71,10 @@ public class ForkJoinPoolScheduler implements Scheduler {
             if (scheduled.compareAndSet(false, true)) {
                 forkJoinPool.submit(this);
             }
+        }
+
+        boolean isRunning() {
+            return scheduled.get();
         }
 
         @Override
