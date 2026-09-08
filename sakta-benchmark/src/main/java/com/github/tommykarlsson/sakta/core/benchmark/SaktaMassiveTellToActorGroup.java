@@ -11,7 +11,7 @@ import org.awaitility.Awaitility;
 
 public class SaktaMassiveTellToActorGroup {
     static void run(int messageCount, int actorCount, ActorSystem actorSystem) {
-        try (actorSystem) {
+        try {
             OutstandingMessages outstanding = new OutstandingMessages(messageCount * actorCount);
 
             for (int a = 0; a < actorCount; a++) {
@@ -31,6 +31,8 @@ public class SaktaMassiveTellToActorGroup {
             Awaitility.await()
                     .atMost(30, TimeUnit.SECONDS)
                     .until(outstanding::allReceived);
+        } finally {
+            BenchmarkDefaults.closeAndAwait(actorSystem);
         }
     }
 

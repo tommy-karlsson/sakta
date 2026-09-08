@@ -24,9 +24,9 @@ public class JmhSequential {
     public String what;
 
     @Benchmark
-    @Fork(1)
-    @Warmup(iterations = 2)
-    @Measurement(iterations = 3)
+    @Fork(value = BenchmarkDefaults.FORKS, jvmArgs = {BenchmarkDefaults.MAX_HEAP})
+    @Warmup(iterations = BenchmarkDefaults.WARMUP_ITERATIONS)
+    @Measurement(iterations = BenchmarkDefaults.MEASUREMENT_ITERATIONS)
     @BenchmarkMode(Mode.AverageTime)
     public void run() {
         switch (what) {
