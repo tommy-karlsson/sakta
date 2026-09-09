@@ -22,7 +22,7 @@ class ActorSystemTest {
 
     @AfterEach
     public void afterEach() {
-        this.actorSystem.close();
+        this.actorSystem.shutdownNow();
     }
 
 

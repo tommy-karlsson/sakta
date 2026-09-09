@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.micrometer;
 
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 
 import io.micrometer.core.instrument.Timer;
@@ -77,7 +78,7 @@ class MeterActionRunMailItemDecoratorTest {
         assertTrue(meterRegistry.find(METER_NAME).timers().isEmpty());
     }
 
-    private static MailItem itemRunning(Runnable action) {
+    private static MailItem itemRunning(MailAction action) {
         return new MailItem(Actor.class, "ask", "divide", action);
     }
 

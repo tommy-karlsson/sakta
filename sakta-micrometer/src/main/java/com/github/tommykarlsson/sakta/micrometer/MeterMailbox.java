@@ -1,6 +1,9 @@
 package com.github.tommykarlsson.sakta.micrometer;
 
+import java.util.List;
+
 import com.github.tommykarlsson.sakta.core.Disposable;
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
 
@@ -38,13 +41,29 @@ public class MeterMailbox implements Mailbox {
      * the item it was taken from nor the registry it reports to. The timer being resolved on the
      * way in also means it is registered then, rather than when the first action of its kind runs.
      */
-    private record QueueTimedAction(Runnable action, Timer timer, Timer.Sample sample) implements Runnable {
+    private record QueueTimedAction(MailAction action, Timer timer, Timer.Sample sample) implements MailAction {
 
         @Override
         public void run() {
             sample.stop(timer);
             action.run();
         }
+
+        /** An action given up on never came off the queue, so its wait is not a wait worth recording. */
+        @Override
+        public void discard(Throwable cause) {
+            action.discard(cause);
+        }
+    }
+
+    @Override
+    public void close() {
+        delegate.close();
+    }
+
+    @Override
+    public List<MailItem> discardQueued() {
+        return delegate.discardQueued();
     }
 
     @Override

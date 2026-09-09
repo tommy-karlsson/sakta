@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.core.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -10,8 +11,16 @@ import com.github.tommykarlsson.sakta.core.Mailbox;
 
 public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
 
+    /**
+     * Put in the queue when the mailbox is closed, so that whoever is waiting on the queue wakes up
+     * and finds out, having first taken everything that was queued ahead of it.
+     */
+    private static final MailItem CLOSED = new MailItem(Void.class, "close", "close", () -> { });
+
     protected final LinkedBlockingQueue<MailItem> queue;
     protected final List<Runnable> onAddListeners = new CopyOnWriteArrayList<>();
+
+    protected volatile boolean closed;
 
     public AbstractLinkedBlockingQueueMailbox(LinkedBlockingQueue<MailItem> queue) {
         this.queue = queue;
@@ -19,7 +28,13 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
 
     @Override
     public Runnable poll() throws InterruptedException {
+        if (closed && queue.isEmpty()) {
+            return null;
+        }
         MailItem item = this.queue.take();
+        if (item == CLOSED) {
+            return null;
+        }
         return item.action();
     }
 
@@ -32,5 +47,38 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
     @Override
     public boolean isEmpty() {
         return queue.isEmpty();
+    }
+
+    /**
+     * The marker is all it takes to stop whoever is processing this mailbox. A scheduler that gives
+     * an actor a thread of its own is waiting on the queue and will take the marker; one that only
+     * processes a mailbox when something arrives is either already processing this one, if it has
+     * anything in it, or has nothing to come back for.
+     *
+     * <p>Which is why the listeners are not told: telling them would ask for a mailbox to be
+     * processed once per mailbox, and there can be an awful lot of mailboxes.
+     */
+    @Override
+    public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        queue.offer(CLOSED);
+    }
+
+    /**
+     * Nothing is allocated for a mailbox with nothing in it, which is the usual case and, when
+     * there are a great many mailboxes, the difference between a list each and no lists at all.
+     */
+    @Override
+    public List<MailItem> discardQueued() {
+        if (queue.isEmpty()) {
+            return List.of();
+        }
+        List<MailItem> queued = new ArrayList<>();
+        queue.drainTo(queued);
+        queued.remove(CLOSED);
+        return queued;
     }
 }

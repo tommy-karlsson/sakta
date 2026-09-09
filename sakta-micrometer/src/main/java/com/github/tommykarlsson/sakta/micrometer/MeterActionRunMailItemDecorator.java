@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.micrometer;
 
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.MailItemDecorator;
 
@@ -30,7 +31,13 @@ public class MeterActionRunMailItemDecorator implements MailItemDecorator {
      * than the item it was taken from, so that decorating an item does not keep the undecorated
      * one alive for as long as the decorated one is queued.
      */
-    private record TimedAction(Runnable action, MeterRegistry meterRegistry, Tags tags) implements Runnable {
+    private record TimedAction(MailAction action, MeterRegistry meterRegistry, Tags tags) implements MailAction {
+
+        /** An action that never ran took no time, so there is nothing to record, only to pass on. */
+        @Override
+        public void discard(Throwable cause) {
+            action.discard(cause);
+        }
 
         @Override
         public void run() {

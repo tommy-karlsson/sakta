@@ -1,6 +1,7 @@
 package com.github.tommykarlsson.sakta.core.impl;
 
 import com.github.tommykarlsson.sakta.core.ActorRef;
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
 import com.github.tommykarlsson.sakta.core.Schedule;
@@ -69,7 +70,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
      * between the scheduler and the actor's own method says which kind of send it came from.
      */
 
-    private final class TellAction implements Runnable {
+    private final class TellAction implements MailAction {
 
         private final Consumer<T> teller;
 
@@ -87,7 +88,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
         }
     }
 
-    private final class AskAction<U> implements Runnable {
+    private final class AskAction<U> implements MailAction {
 
         private final Function<T, U> asker;
         private final CompletableFuture<U> completion;
@@ -110,9 +111,14 @@ public class ActorRefImpl<T> implements ActorRef<T> {
                 completion.completeExceptionally(e);
             }
         }
+
+        @Override
+        public void discard(Throwable cause) {
+            completion.completeExceptionally(cause);
+        }
     }
 
-    private final class FlatAskAction<U> implements Runnable {
+    private final class FlatAskAction<U> implements MailAction {
 
         private final Function<T, CompletableFuture<U>> asker;
         private final CompletableFuture<U> completion;
@@ -134,6 +140,11 @@ public class ActorRefImpl<T> implements ActorRef<T> {
                 logger.log(Level.SEVERE, "Actor ask failed", e);
                 completion.completeExceptionally(e);
             }
+        }
+
+        @Override
+        public void discard(Throwable cause) {
+            completion.completeExceptionally(cause);
         }
     }
 
