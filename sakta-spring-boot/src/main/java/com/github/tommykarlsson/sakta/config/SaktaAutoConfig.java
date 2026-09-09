@@ -1,25 +1,35 @@
 package com.github.tommykarlsson.sakta.config;
 
-import java.util.List;
-
 import com.github.tommykarlsson.sakta.core.ActorSystem;
 import com.github.tommykarlsson.sakta.core.MailItemDecorator;
 import com.github.tommykarlsson.sakta.core.MailboxFactory;
 import com.github.tommykarlsson.sakta.core.MailboxFactoryDecorator;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 import com.github.tommykarlsson.sakta.core.impl.BoundedMailboxFactory;
+import com.github.tommykarlsson.sakta.core.impl.MailItemDecoratingMailboxFactory;
+import com.github.tommykarlsson.sakta.core.impl.MailItemDecoratingMailboxFactoryDecorator;
 import com.github.tommykarlsson.sakta.core.impl.UnboundedMailboxFactory;
 import com.github.tommykarlsson.sakta.core.impl.VirtualThreadPerActorScheduler;
-
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+
+import java.util.List;
 
 @AutoConfiguration
 @ConditionalOnClass(ActorSystem.class)
+@EnableConfigurationProperties(SaktaConfigProperties.class)
 public class SaktaAutoConfig {
+
+    @Bean
+    @ConditionalOnBean(MailItemDecorator.class)
+    MailboxFactoryDecorator mailItemDecoratingMailboxFactoryDecorator(List<MailItemDecorator> mailItemDecorators) {
+        return new MailItemDecoratingMailboxFactoryDecorator(mailItemDecorators);
+    }
 
     @Bean
     @ConditionalOnProperty(name = "sakta.default-mailbox-type", havingValue = "bounded")
@@ -54,12 +64,9 @@ public class SaktaAutoConfig {
 
     @Bean
     ActorSystem defaultActorSystem(
-            MailboxFactory unboundedMailboxFactory,
-            Scheduler scheduler,
-            List<MailItemDecorator> mailItemDecorators) {
-        return new ActorSystem(
-                unboundedMailboxFactory,
-                scheduler,
-                mailItemDecorators);
+            MailboxFactory mailboxFactory,
+            Scheduler scheduler) {
+
+        return new ActorSystem(mailboxFactory, scheduler);
     }
 }

@@ -4,6 +4,7 @@ import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.MailItemDecorator;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 
 /**
@@ -21,22 +22,28 @@ public class MeterActionRunMailItemDecorator implements MailItemDecorator {
 
     @Override
     public MailItem decorateItem(MailItem item) {
-        return item.withAction(() -> {
+        return item.withAction(new TimedAction(item.action(), meterRegistry, MailItemTags.of(item)));
+    }
+
+    /**
+     * Runs the action, recording how long it took and whether it threw. It holds the action rather
+     * than the item it was taken from, so that decorating an item does not keep the undecorated
+     * one alive for as long as the decorated one is queued.
+     */
+    private record TimedAction(Runnable action, MeterRegistry meterRegistry, Tags tags) implements Runnable {
+
+        @Override
+        public void run() {
             Timer.Sample sample = Timer.start();
             String outcome = "success";
             try {
-                item.action().run();
+                action.run();
             } catch (Error | RuntimeException e) {
                 outcome = "failed";
                 throw e;
             } finally {
-                sample.stop(meterRegistry.timer(METER_NAME,
-                        "actor.type", item.actorType().getSimpleName(),
-                        "action.type", item.actionType(),
-                        "action.name", item.actionName(),
-                        "outcome", outcome
-                ));
+                sample.stop(meterRegistry.timer(METER_NAME, tags.and("outcome", outcome)));
             }
-        });
+        }
     }
 }

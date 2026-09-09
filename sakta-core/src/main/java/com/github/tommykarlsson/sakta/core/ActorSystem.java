@@ -6,8 +6,6 @@ import com.github.tommykarlsson.sakta.core.impl.VirtualThreadPerActorScheduler;
 
 import java.lang.ref.Cleaner;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
@@ -16,7 +14,6 @@ public class ActorSystem implements AutoCloseable {
 
     private final MailboxFactory mailboxFactory;
     private final Scheduler scheduler;
-    private final List<MailItemDecorator> mailItemDecorators;
     private final State state;
     private final Cleaner.Cleanable cleanable;
 
@@ -28,14 +25,16 @@ public class ActorSystem implements AutoCloseable {
         this(mailboxFactory, new VirtualThreadPerActorScheduler());
     }
 
+    /**
+     * @param mailboxFactory The factory for the actors' mailboxes. Decorating what the actors run,
+     *                       for instance with {@link MailItemDecorator}s, is a matter of what
+     *                       factory is handed in here; see
+     *                       {@link com.github.tommykarlsson.sakta.core.impl.MailItemDecoratingMailboxFactory}.
+     * @param scheduler      The scheduler that drains the mailboxes.
+     */
     public ActorSystem(MailboxFactory mailboxFactory, Scheduler scheduler) {
-        this(mailboxFactory, scheduler, Collections.emptyList());
-    }
-
-    public ActorSystem(MailboxFactory mailboxFactory, Scheduler scheduler, List<MailItemDecorator> mailItemDecorators) {
         this.mailboxFactory = mailboxFactory;
         this.scheduler = scheduler;
-        this.mailItemDecorators = mailItemDecorators;
         this.state = new State();
         this.cleanable = Cleaner.create().register(this, state);
     }
@@ -46,7 +45,7 @@ public class ActorSystem implements AutoCloseable {
     }
 
     private <T> ActorRef<T> createAndStartActorRef(Supplier<T> actorSupplier) {
-        ActorRef<T> actorRef = new ActorRefImpl<>(actorSupplier.get(), mailboxFactory.createMailbox(), scheduler, mailItemDecorators);
+        ActorRef<T> actorRef = new ActorRefImpl<>(actorSupplier.get(), mailboxFactory.createMailbox(), scheduler);
         actorRef.start();
         return actorRef;
     }

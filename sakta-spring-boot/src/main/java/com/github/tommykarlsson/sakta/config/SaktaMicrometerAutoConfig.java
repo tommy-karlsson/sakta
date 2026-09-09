@@ -5,6 +5,8 @@ import com.github.tommykarlsson.sakta.micrometer.MeterMailboxFactory;
 import com.github.tommykarlsson.sakta.micrometer.MeterMailboxFactoryDecorator;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
@@ -12,6 +14,7 @@ import org.springframework.context.annotation.Bean;
 import io.micrometer.core.instrument.MeterRegistry;
 
 @AutoConfiguration
+@AutoConfigureBefore(SaktaAutoConfig.class)
 @ConditionalOnClass({MeterMailboxFactory.class, MeterRegistry.class})
 public class SaktaMicrometerAutoConfig {
 
