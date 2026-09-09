@@ -9,6 +9,9 @@ public class SaktaConfigProperties {
 
     private String defaultMailboxType = "unbounded";
 
+    /** How long the actors are given to finish what they were sent, when the context shuts down. */
+    private Duration shutdownTimeout = Duration.ofSeconds(30);
+
     private final BoundedMailboxProperties boundedMailbox = new BoundedMailboxProperties();
 
     public String getDefaultMailboxType() {
@@ -17,6 +20,14 @@ public class SaktaConfigProperties {
 
     public void setDefaultMailboxType(String defaultMailboxType) {
         this.defaultMailboxType = defaultMailboxType;
+    }
+
+    public Duration getShutdownTimeout() {
+        return shutdownTimeout;
+    }
+
+    public void setShutdownTimeout(Duration shutdownTimeout) {
+        this.shutdownTimeout = shutdownTimeout;
     }
 
     public BoundedMailboxProperties getBoundedMailbox() {
