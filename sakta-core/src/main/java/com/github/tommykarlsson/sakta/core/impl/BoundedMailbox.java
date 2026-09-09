@@ -26,7 +26,7 @@ public class BoundedMailbox extends AbstractLinkedBlockingQueueMailbox {
             if (!success) {
                 throw new IllegalStateException("Mailbox is full");
             } else {
-                onAddListeners.forEach(Runnable::run);
+                notifyItemAdded();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

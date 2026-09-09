@@ -18,9 +18,14 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
     private static final MailItem CLOSED = new MailItem(Void.class, "close", "close", () -> { });
 
     protected final LinkedBlockingQueue<MailItem> queue;
-    protected final List<Runnable> onAddListeners = new CopyOnWriteArrayList<>();
 
     protected volatile boolean closed;
+
+    /**
+     * Null until somebody actually listens, which for a scheduler that gives each actor a thread of
+     * its own is never. A list per mailbox is not much until there are a million mailboxes.
+     */
+    private volatile List<Runnable> onAddListeners;
 
     public AbstractLinkedBlockingQueueMailbox(LinkedBlockingQueue<MailItem> queue) {
         this.queue = queue;
@@ -40,8 +45,24 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
 
     @Override
     public Disposable onAdd(Runnable r) {
-        onAddListeners.add(r);
-        return () -> onAddListeners.remove(r);
+        List<Runnable> listeners = listeners();
+        listeners.add(r);
+        return () -> listeners.remove(r);
+    }
+
+    /** Tells whoever is listening that there is something to come for. */
+    protected void notifyItemAdded() {
+        List<Runnable> listeners = onAddListeners;
+        if (listeners != null) {
+            listeners.forEach(Runnable::run);
+        }
+    }
+
+    private synchronized List<Runnable> listeners() {
+        if (onAddListeners == null) {
+            onAddListeners = new CopyOnWriteArrayList<>();
+        }
+        return onAddListeners;
     }
 
     @Override

@@ -20,7 +20,7 @@ public class UnboundedMailbox extends AbstractLinkedBlockingQueueMailbox {
         if (!success) {
             throw new IllegalStateException("Mailbox is full");
         } else {
-            onAddListeners.forEach(Runnable::run);
+            notifyItemAdded();
         }
     }
 }
