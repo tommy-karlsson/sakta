@@ -36,6 +36,14 @@ public interface ActorRef<T> {
      * Same functionality as {@link #ask(Function)}, but to be used when the result of the supplied function
      * is already a {@link CompletableFuture}.
      *
+     * <p>The function runs on the actor's thread. The future it returns does not: whatever is chained onto
+     * that future runs wherever the future is completed, which is typically another actor's thread. Anything
+     * chained on is therefore outside the actor's serial processing, and must not touch the actor's state. To
+     * act on the result as the actor, send it back to the actor as another message.
+     *
+     * <p>The actor also takes its next message as soon as the function returns, rather than when the future
+     * completes, so two of these can complete in either order.
+     *
      * @param asker The function that executes the asking action on the actor, and produces the result.
      * @param <U> The result type.
      * @return Completable future that provides the result (or exception if completed exceptionally).

@@ -14,7 +14,10 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Timeout;
 import org.openjdk.jmh.annotations.Warmup;
+
+import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
 public class JmhParallelTell {
@@ -47,6 +50,7 @@ public class JmhParallelTell {
     @Warmup(iterations = BenchmarkDefaults.WARMUP_ITERATIONS)
     @Measurement(iterations = BenchmarkDefaults.MEASUREMENT_ITERATIONS)
     @BenchmarkMode(Mode.AverageTime)
+    @Timeout(time = 1, timeUnit = TimeUnit.MINUTES)
     public void run() {
         SaktaMassiveTellToActorGroup.run(MESSAGE_COUNT, ACTOR_COUNT, actorSystem);
     }

@@ -5,13 +5,14 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class BoundedMailboxTest {
 
-    private static final Runnable EMPTY_RUNNABLE = () -> {
+    private static final MailAction EMPTY_RUNNABLE = () -> {
     };
     private static final MailItem ITEM = new MailItem(Object.class, "tell", EMPTY_RUNNABLE);
 

@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.micrometer;
 
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
 import com.github.tommykarlsson.sakta.core.impl.UnboundedMailbox;
@@ -86,7 +87,7 @@ class MeterMailboxTest {
         assertTrue(mailbox.isEmpty());
     }
 
-    private static MailItem itemRunning(Runnable action) {
+    private static MailItem itemRunning(MailAction action) {
         return new MailItem(Actor.class, "tell", "increment", action);
     }
 

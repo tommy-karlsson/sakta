@@ -92,6 +92,25 @@ class SaktaAutoConfigTest {
         });
     }
 
+    /**
+     * Closing the context has to let the actors finish. The destroy method spring would infer on
+     * its own is the one that stops them accepting and returns without waiting, so this is what
+     * says the wiring picked the other one.
+     */
+    @Test
+    void closingTheContextLetsTheActorsFinishWhatTheyWereSent() {
+        AtomicInteger handled = new AtomicInteger();
+        runner.run(context -> {
+            ActorRef<Actor> ref = context.getBean(ActorSystem.class)
+                    .getOrCreateActorRef("actor", () -> new Actor(handled), Actor.class);
+            for (int i = 0; i < 100; i++) {
+                ref.tell(Actor::handleSlowly);
+            }
+        });
+
+        assertThat(handled).hasValue(100);
+    }
+
     @Test
     void startsWithABoundedMailbox() {
         runner.withPropertyValues("sakta.default-mailbox-type=bounded").run(context -> {
@@ -141,9 +160,25 @@ class SaktaAutoConfigTest {
         }
     }
 
-    static class Actor {
+    record Actor(AtomicInteger handled) {
+
+        Actor() {
+            this(new AtomicInteger());
+        }
+
         int answer() {
             return 42;
+        }
+
+        /** Slow enough that a destroy which did not wait would leave most of these unhandled. */
+        void handleSlowly() {
+            try {
+                Thread.sleep(2);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            handled.incrementAndGet();
         }
     }
 }

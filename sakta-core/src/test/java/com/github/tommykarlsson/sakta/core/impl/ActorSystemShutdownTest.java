@@ -29,34 +29,27 @@ class ActorSystemShutdownTest {
     }
 
     @Test
-    void closeWithTimeoutWaitsForEveryActor() throws InterruptedException {
+    void awaitTerminationWaitsForEveryOneOfManyActors() throws InterruptedException {
         ActorSystem actorSystem = newActorSystem(new VirtualThreadPerActorScheduler());
         for (int i = 0; i < 1_000; i++) {
             actorSystem.getOrCreateActorRef(i, Actor::new, Actor.class).tell(Actor::noop);
         }
 
-        assertTrue(actorSystem.close(PATIENT));
+        actorSystem.shutdown();
+
+        assertTrue(actorSystem.awaitTermination(PATIENT));
     }
 
     @Test
-    void closeWithTimeoutAlsoWorksForTheForkJoinScheduler() throws InterruptedException {
+    void awaitTerminationAlsoWaitsForTheForkJoinScheduler() throws InterruptedException {
         ActorSystem actorSystem = newActorSystem(new ForkJoinPoolScheduler());
         for (int i = 0; i < 1_000; i++) {
             actorSystem.getOrCreateActorRef(i, Actor::new, Actor.class).tell(Actor::noop);
         }
 
-        assertTrue(actorSystem.close(PATIENT));
-    }
+        actorSystem.shutdown();
 
-    /** Closing without a timeout leaves the actors winding down, but it does stop them. */
-    @Test
-    void closeWithoutTimeoutStillStopsTheActors() throws InterruptedException {
-        ActorSystem actorSystem = newActorSystem(new VirtualThreadPerActorScheduler());
-        actorSystem.getOrCreateActorRef("actor", Actor::new, Actor.class).tell(Actor::noop);
-
-        actorSystem.close();
-
-        assertTrue(actorSystem.close(PATIENT), "the actors signalled by close() should still finish");
+        assertTrue(actorSystem.awaitTermination(PATIENT));
     }
 
     private static ActorSystem newActorSystem(Scheduler scheduler) {

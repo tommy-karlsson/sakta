@@ -2,6 +2,7 @@ package com.github.tommykarlsson.sakta.core.impl;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.github.tommykarlsson.sakta.core.MailAction;
 import com.github.tommykarlsson.sakta.core.MailItem;
 
 import com.github.tommykarlsson.sakta.core.impl.UnboundedMailbox;
@@ -14,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UnboundedMailboxTest {
 
-    private static final Runnable EMPTY_RUNNABLE = () -> {
+    private static final MailAction EMPTY_RUNNABLE = () -> {
     };
     private static final MailItem ITEM = new MailItem(Object.class, "tell", EMPTY_RUNNABLE);
 

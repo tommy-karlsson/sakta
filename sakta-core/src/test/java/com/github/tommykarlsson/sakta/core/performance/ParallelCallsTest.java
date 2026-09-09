@@ -27,7 +27,7 @@ public class ParallelCallsTest {
 
     @AfterEach
     public void afterEach() {
-        this.actorSystem.close();
+        this.actorSystem.shutdownNow();
     }
 
     @Test

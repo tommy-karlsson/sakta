@@ -47,4 +47,18 @@ public class MailItemDecoratingMailbox implements Mailbox {
     public boolean isEmpty() {
         return delegate.isEmpty();
     }
+
+    @Override
+    public void close() {
+        delegate.close();
+    }
+
+    /**
+     * The items come back decorated, since decorating happens on the way in. Discarding one
+     * therefore goes through the decorators, which is why they pass discarding along.
+     */
+    @Override
+    public List<MailItem> discardQueued() {
+        return delegate.discardQueued();
+    }
 }

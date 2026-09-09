@@ -32,7 +32,7 @@ class ForkJoinPoolSchedulerTest {
 
     @AfterEach
     public void afterEach() {
-        this.actorSystem.close();
+        this.actorSystem.shutdownNow();
     }
 
     /**

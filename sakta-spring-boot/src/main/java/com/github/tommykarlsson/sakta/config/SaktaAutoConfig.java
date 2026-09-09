@@ -62,11 +62,17 @@ public class SaktaAutoConfig {
         return new VirtualThreadPerActorScheduler();
     }
 
-    @Bean
+    /**
+     * Destroying is left to {@link SpringManagedActorSystem}, so that the actors are given time to
+     * finish. An inferred destroy method would find the one that stops them accepting and returns
+     * without waiting for any of it.
+     */
+    @Bean(destroyMethod = "")
     ActorSystem defaultActorSystem(
             MailboxFactory mailboxFactory,
-            Scheduler scheduler) {
+            Scheduler scheduler,
+            SaktaConfigProperties saktaConfigProperties) {
 
-        return new ActorSystem(mailboxFactory, scheduler);
+        return new SpringManagedActorSystem(mailboxFactory, scheduler, saktaConfigProperties.getShutdownTimeout());
     }
 }

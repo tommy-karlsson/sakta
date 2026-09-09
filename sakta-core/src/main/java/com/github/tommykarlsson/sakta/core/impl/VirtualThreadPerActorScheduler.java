@@ -26,7 +26,11 @@ public class VirtualThreadPerActorScheduler implements Scheduler {
         public void run() {
             while (true) {
                 try {
-                    mailbox.poll().run();
+                    Runnable action = mailbox.poll();
+                    if (action == null) {
+                        return;
+                    }
+                    action.run();
                 } catch (InterruptedException e) {
                     return;
                 }

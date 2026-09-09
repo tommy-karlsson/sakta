@@ -55,16 +55,18 @@ class MailItemDecoratingMailboxTest {
             return item;
         };
 
-        try (ActorSystem actorSystem = new ActorSystem(
+        ActorSystem actorSystem = new ActorSystem(
                 new MailItemDecoratingMailboxFactory(new UnboundedMailboxFactory(), List.of(counting)),
-                new VirtualThreadPerActorScheduler())) {
-
+                new VirtualThreadPerActorScheduler());
+        try {
             ActorRef<Actor> ref = actorSystem.getOrCreateActorRef("actor", Actor::new, Actor.class);
             ref.tell(Actor::noop);
             ref.ask(Actor::answer).get();
             ref.flatAsk(Actor::answerLater).get();
 
             assertEquals(3, decorated.get());
+        } finally {
+            actorSystem.shutdownNow();
         }
     }
 

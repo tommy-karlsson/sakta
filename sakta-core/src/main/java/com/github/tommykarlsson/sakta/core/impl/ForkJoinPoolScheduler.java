@@ -82,7 +82,11 @@ public class ForkJoinPoolScheduler implements Scheduler {
             try {
                 while (!mailbox.isEmpty()) {
                     try {
-                        mailbox.poll().run();
+                        Runnable action = mailbox.poll();
+                        if (action == null) {
+                            break;
+                        }
+                        action.run();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }

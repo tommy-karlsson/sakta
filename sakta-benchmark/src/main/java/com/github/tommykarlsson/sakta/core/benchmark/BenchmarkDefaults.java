@@ -9,13 +9,16 @@ import com.github.tommykarlsson.sakta.core.ActorSystem;
  */
 final class BenchmarkDefaults {
 
-    /** Two forks, so that a score which only holds in one JVM shows up as error rather than as fact. */
-    static final int FORKS = 2;
+    /**
+     * One fork, to keep a run short. The cost is that a score which only holds in one JVM has
+     * nothing to disagree with, so run-to-run variation does not show up in the error.
+     */
+    static final int FORKS = 1;
 
     /** The first invocation in a fresh JVM costs about twice the rest, so it is warmed away. */
-    static final int WARMUP_ITERATIONS = 3;
+    static final int WARMUP_ITERATIONS = 1;
 
-    static final int MEASUREMENT_ITERATIONS = 6;
+    static final int MEASUREMENT_ITERATIONS = 2;
 
     /**
      * The workload's live set is about 2 GB at a million actors, so this leaves headroom without
@@ -23,19 +26,24 @@ final class BenchmarkDefaults {
      */
     static final String MAX_HEAP = "-Xmx3g";
 
-    private static final Duration SHUTDOWN_TIMEOUT = Duration.ofMinutes(2);
+    /**
+     * Teardown budget, not a measured quantity: it decides when teardown gives up, and is excluded
+     * from the scores. Joining a million virtual threads one at a time measured around nine
+     * seconds, so ten left no margin at all.
+     */
+    private static final Duration SHUTDOWN_TIMEOUT = Duration.ofSeconds(30);
 
     private BenchmarkDefaults() {
     }
 
     /**
-     * Closes the actor system and waits for its actors. {@link ActorSystem#close()} on its own
-     * returns while the actor threads are still winding down, and they then compete with the next
-     * invocation, which made roughly one invocation in three run several times slower than the rest.
+     * Stops the actor system and waits for its actors. Shutting down on its own returns while the
+     * actor threads are still winding down, and they then compete with the next invocation, which
+     * made roughly one invocation in three run several times slower than the rest.
      */
     static void closeAndAwait(ActorSystem actorSystem) {
         try {
-            if (!actorSystem.close(SHUTDOWN_TIMEOUT)) {
+            if (!actorSystem.shutdown(SHUTDOWN_TIMEOUT)) {
                 throw new IllegalStateException("Actors had not stopped after " + SHUTDOWN_TIMEOUT);
             }
         } catch (InterruptedException e) {
