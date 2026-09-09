@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.github.tommykarlsson.sakta.core.MailItem;
 
-public class BoundedMailbox extends AbstractLinkedBlockingQueueMailbox {
+public class BoundedMailbox extends AbstractBlockingQueueMailbox {
 
     private final Duration addTimeout;
 

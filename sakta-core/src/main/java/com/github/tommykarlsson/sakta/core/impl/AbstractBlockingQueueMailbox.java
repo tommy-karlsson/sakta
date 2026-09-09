@@ -2,14 +2,14 @@ package com.github.tommykarlsson.sakta.core.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.github.tommykarlsson.sakta.core.Disposable;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
 
-public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
+public abstract class AbstractBlockingQueueMailbox implements Mailbox {
 
     /**
      * Put in the queue when the mailbox is closed, so that whoever is waiting on the queue wakes up
@@ -17,7 +17,7 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
      */
     private static final MailItem CLOSED = new MailItem(Void.class, "close", "close", () -> { });
 
-    protected final LinkedBlockingQueue<MailItem> queue;
+    protected final BlockingQueue<MailItem> queue;
 
     protected volatile boolean closed;
 
@@ -27,7 +27,7 @@ public abstract class AbstractLinkedBlockingQueueMailbox implements Mailbox {
      */
     private volatile List<Runnable> onAddListeners;
 
-    public AbstractLinkedBlockingQueueMailbox(LinkedBlockingQueue<MailItem> queue) {
+    public AbstractBlockingQueueMailbox(BlockingQueue<MailItem> queue) {
         this.queue = queue;
     }
 
