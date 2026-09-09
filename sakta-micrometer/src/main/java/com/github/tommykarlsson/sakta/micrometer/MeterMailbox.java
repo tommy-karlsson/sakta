@@ -24,16 +24,27 @@ public class MeterMailbox implements Mailbox {
 
     @Override
     public void add(MailItem item) {
-        Timer.Sample sample = Timer.start();
+        delegate.add(item.withAction(new QueueTimedAction(
+                item.action(),
+                meterRegistry.timer(METER_NAME, MailItemTags.of(item)),
+                Timer.start())));
+    }
 
-        delegate.add(item.withAction(() -> {
-            sample.stop(meterRegistry.timer(METER_NAME,
-                    "actor.type", item.actorType().getSimpleName(),
-                    "action.type", item.actionType(),
-                    "action.name", item.actionName()
-            ));
-            item.action().run();
-        }));
+    /**
+     * Records how long the action waited before it ran, and then runs it. The sample is started as
+     * the item is added, which is what makes the measurement the time spent queued.
+     *
+     * <p>Everything the recording needs is resolved up front, so that a queued action holds neither
+     * the item it was taken from nor the registry it reports to. The timer being resolved on the
+     * way in also means it is registered then, rather than when the first action of its kind runs.
+     */
+    private record QueueTimedAction(Runnable action, Timer timer, Timer.Sample sample) implements Runnable {
+
+        @Override
+        public void run() {
+            sample.stop(timer);
+            action.run();
+        }
     }
 
     @Override
