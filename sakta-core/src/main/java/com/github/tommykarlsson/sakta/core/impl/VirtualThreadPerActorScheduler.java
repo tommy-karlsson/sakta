@@ -10,12 +10,20 @@ public class VirtualThreadPerActorScheduler implements Scheduler {
 
     @Override
     public Schedule schedule(Mailbox mailbox) {
+        return new ThreadSchedule(Thread.ofVirtual().start(new MailboxRunner(mailbox)));
+    }
 
-        /*
-         * This is the thread that executes all the actions queued in the mailbox. There is one of these threads per actor.
-         * The actor may only be accessed from this thread (this is the key to serial single-threaded processing in the actor).
-         */
-        Thread thread = Thread.ofVirtual().start(() -> {
+    /**
+     * Runs everything queued in one mailbox, on the one thread there is per actor. The actor may
+     * only be touched from that thread, which is what keeps its processing serial.
+     *
+     * <p>A class rather than a lambda, so that the bottom of every actor's stack trace names what
+     * it is doing.
+     */
+    private record MailboxRunner(Mailbox mailbox) implements Runnable {
+
+        @Override
+        public void run() {
             while (true) {
                 try {
                     mailbox.poll().run();
@@ -23,8 +31,7 @@ public class VirtualThreadPerActorScheduler implements Scheduler {
                     return;
                 }
             }
-        });
-        return new ThreadSchedule(thread);
+        }
     }
 
     private record ThreadSchedule(Thread thread) implements Schedule {
