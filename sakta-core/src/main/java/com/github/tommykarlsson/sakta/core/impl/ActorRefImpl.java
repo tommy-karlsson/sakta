@@ -1,6 +1,5 @@
 package com.github.tommykarlsson.sakta.core.impl;
 
-import com.github.tommykarlsson.sakta.core.MailItemDecorator;
 import com.github.tommykarlsson.sakta.core.ActorRef;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
@@ -8,7 +7,6 @@ import com.github.tommykarlsson.sakta.core.Schedule;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -20,16 +18,14 @@ public class ActorRefImpl<T> implements ActorRef<T> {
     private final T actor;
     private final Mailbox mailbox;
     private final Scheduler scheduler;
-    private final List<MailItemDecorator> mailItemDecorators;
     private final Logger logger;
 
     private Schedule schedule;
 
-    public ActorRefImpl(T actor, Mailbox mailbox, Scheduler scheduler, List<MailItemDecorator> mailItemDecorators) {
+    public ActorRefImpl(T actor, Mailbox mailbox, Scheduler scheduler) {
         this.actor = actor;
         this.mailbox = mailbox;
         this.scheduler = scheduler;
-        this.mailItemDecorators = mailItemDecorators;
         this.logger = Logger.getLogger(actor.getClass().getName() + "_ActorRef");
     }
 
@@ -42,11 +38,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
                 logger.log(Level.SEVERE, "Actor tell failed", e);
             }
         };
-        MailItem mailItem = new MailItem(actor.getClass(), "tell", runnable);
-        for (MailItemDecorator mailItemDecorator : mailItemDecorators) {
-            mailItem = mailItemDecorator.decorateItem(mailItem);
-        }
-        mailbox.add(mailItem);
+        mailbox.add(new MailItem(actor.getClass(), "tell", runnable));
     }
 
     @Override
@@ -64,11 +56,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
                 }
             }
         };
-        MailItem mailItem = new MailItem(actor.getClass(), "ask", runnable);
-        for (MailItemDecorator mailItemDecorator : mailItemDecorators) {
-            mailItem = mailItemDecorator.decorateItem(mailItem);
-        }
-        mailbox.add(mailItem);
+        mailbox.add(new MailItem(actor.getClass(), "ask", runnable));
         return completion;
     }
 
@@ -92,11 +80,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
                 }
             }
         };
-        MailItem mailItem = new MailItem(actor.getClass(), "ask", runnable);
-        for (MailItemDecorator mailItemDecorator : mailItemDecorators) {
-            mailItem = mailItemDecorator.decorateItem(mailItem);
-        }
-        mailbox.add(mailItem);
+        mailbox.add(new MailItem(actor.getClass(), "ask", runnable));
         return completion;
     }
 

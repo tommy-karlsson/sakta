@@ -8,6 +8,7 @@ import com.github.tommykarlsson.sakta.core.MailboxFactory;
 import com.github.tommykarlsson.sakta.core.MailboxFactoryDecorator;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 import com.github.tommykarlsson.sakta.core.impl.BoundedMailboxFactory;
+import com.github.tommykarlsson.sakta.core.impl.MailItemDecoratingMailboxFactory;
 import com.github.tommykarlsson.sakta.core.impl.UnboundedMailboxFactory;
 import com.github.tommykarlsson.sakta.core.impl.VirtualThreadPerActorScheduler;
 
@@ -54,12 +55,14 @@ public class SaktaAutoConfig {
 
     @Bean
     ActorSystem defaultActorSystem(
-            MailboxFactory unboundedMailboxFactory,
+            MailboxFactory mailboxFactory,
             Scheduler scheduler,
             List<MailItemDecorator> mailItemDecorators) {
+
+        // Outside the mailbox factory, so the item decorators run before any mailbox decorator
+        // that factory adds sees the item.
         return new ActorSystem(
-                unboundedMailboxFactory,
-                scheduler,
-                mailItemDecorators);
+                new MailItemDecoratingMailboxFactory(mailboxFactory, mailItemDecorators),
+                scheduler);
     }
 }
