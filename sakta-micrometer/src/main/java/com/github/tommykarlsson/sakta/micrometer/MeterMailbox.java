@@ -10,14 +10,14 @@ import io.micrometer.core.instrument.Timer;
 /**
  * Provide timer on mailbox queue items.
  */
-public class MeterMailboxDecorator implements Mailbox {
+public class MeterMailbox implements Mailbox {
 
     private static final String METER_NAME = "sakta.actor.action.queue";
 
     private final Mailbox delegate;
     private final MeterRegistry meterRegistry;
 
-    public MeterMailboxDecorator(Mailbox delegate, MeterRegistry meterRegistry) {
+    public MeterMailbox(Mailbox delegate, MeterRegistry meterRegistry) {
         this.delegate = delegate;
         this.meterRegistry = meterRegistry;
     }

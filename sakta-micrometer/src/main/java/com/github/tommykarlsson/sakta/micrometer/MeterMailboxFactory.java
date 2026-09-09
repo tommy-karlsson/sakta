@@ -17,6 +17,6 @@ public class MeterMailboxFactory implements MailboxFactory {
 
     @Override
     public Mailbox createMailbox() {
-        return new MeterMailboxDecorator(delegate.createMailbox(), meterRegistry);
+        return new MeterMailbox(delegate.createMailbox(), meterRegistry);
     }
 }
