@@ -22,6 +22,13 @@ import java.util.function.Supplier;
  */
 public class ActorSystem {
 
+    /**
+     * One cleaner for all of them, since each one costs a thread. Registering with it also costs:
+     * what is registered holds every actor of that system until it is either cleaned or the system
+     * is collected, so a system that has stopped unregisters rather than waiting to be collected.
+     */
+    private static final Cleaner CLEANER = Cleaner.create();
+
     private final MailboxFactory mailboxFactory;
     private final Scheduler scheduler;
     private final State state;
@@ -46,7 +53,7 @@ public class ActorSystem {
         this.mailboxFactory = mailboxFactory;
         this.scheduler = scheduler;
         this.state = new State();
-        this.cleanable = Cleaner.create().register(this, new StopActors(state));
+        this.cleanable = CLEANER.register(this, new StopActors(state));
     }
 
     @SuppressWarnings("unchecked")
@@ -119,7 +126,17 @@ public class ActorSystem {
      * @throws InterruptedException If the waiting thread is interrupted.
      */
     public boolean awaitTermination(Duration timeout) throws InterruptedException {
-        return state.awaitStopped(timeout);
+        boolean terminated = state.awaitStopped(timeout);
+        if (terminated) {
+            /*
+             * Unregister rather than leave the cleaner holding every actor of a system that has
+             * already stopped. Left registered, that lot stays reachable until the system itself is
+             * collected, which for a program that builds one system after another means the actors
+             * of every system it has finished with.
+             */
+            stopActors();
+        }
+        return terminated;
     }
 
     /**
@@ -137,9 +154,16 @@ public class ActorSystem {
 
     /**
      * What the cleaner runs, which is the last resort for an actor system that is collected without
-     * having been shut down. It holds the state rather than the actor system, since holding the
-     * actor system would keep it from ever being collected, and it only interrupts, since the
-     * cleaner's thread is no place to wait for anything.
+     * having been shut down. It holds the state rather than the actor system, and only interrupts,
+     * since the cleaner's thread is no place to wait for anything.
+     *
+     * <p>Not holding the actor system directly is not enough to be sure it can be collected: the
+     * state holds the actors, and an actor that holds the actor system back, which is how an actor
+     * reaches other actors, completes the circle. Such a system is reachable from what is meant to
+     * clean up after it, so it never becomes unreachable and this never runs. Measured: a system
+     * whose actor holds it is never collected, one whose actor does not is.
+     *
+     * <p>Which is why a system that has stopped unregisters instead of relying on this.
      */
     private record StopActors(State state) implements Runnable {
 
