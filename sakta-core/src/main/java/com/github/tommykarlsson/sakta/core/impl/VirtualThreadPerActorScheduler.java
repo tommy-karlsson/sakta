@@ -1,13 +1,15 @@
 package com.github.tommykarlsson.sakta.core.impl;
 
-import com.github.tommykarlsson.sakta.core.Disposable;
+import java.time.Duration;
+
 import com.github.tommykarlsson.sakta.core.Mailbox;
+import com.github.tommykarlsson.sakta.core.Schedule;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 
 public class VirtualThreadPerActorScheduler implements Scheduler {
 
     @Override
-    public Disposable schedule(Mailbox mailbox) {
+    public Schedule schedule(Mailbox mailbox) {
 
         /*
          * This is the thread that executes all the actions queued in the mailbox. There is one of these threads per actor.
@@ -22,6 +24,19 @@ public class VirtualThreadPerActorScheduler implements Scheduler {
                 }
             }
         });
-        return thread::interrupt;
+        return new ThreadSchedule(thread);
+    }
+
+    private record ThreadSchedule(Thread thread) implements Schedule {
+
+        @Override
+        public void dispose() {
+            thread.interrupt();
+        }
+
+        @Override
+        public boolean awaitStopped(Duration timeout) throws InterruptedException {
+            return thread.join(timeout);
+        }
     }
 }

@@ -2,11 +2,12 @@ package com.github.tommykarlsson.sakta.core.impl;
 
 import com.github.tommykarlsson.sakta.core.MailItemDecorator;
 import com.github.tommykarlsson.sakta.core.ActorRef;
-import com.github.tommykarlsson.sakta.core.Disposable;
 import com.github.tommykarlsson.sakta.core.MailItem;
 import com.github.tommykarlsson.sakta.core.Mailbox;
+import com.github.tommykarlsson.sakta.core.Schedule;
 import com.github.tommykarlsson.sakta.core.Scheduler;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -22,7 +23,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
     private final List<MailItemDecorator> mailItemDecorators;
     private final Logger logger;
 
-    private Disposable schedule;
+    private Schedule schedule;
 
     public ActorRefImpl(T actor, Mailbox mailbox, Scheduler scheduler, List<MailItemDecorator> mailItemDecorators) {
         this.actor = actor;
@@ -107,5 +108,10 @@ public class ActorRefImpl<T> implements ActorRef<T> {
     @Override
     public void stop() {
         schedule.dispose();
+    }
+
+    @Override
+    public boolean awaitStopped(Duration timeout) throws InterruptedException {
+        return schedule.awaitStopped(timeout);
     }
 }

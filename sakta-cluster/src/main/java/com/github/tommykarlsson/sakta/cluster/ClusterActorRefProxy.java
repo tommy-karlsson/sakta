@@ -1,5 +1,6 @@
 package com.github.tommykarlsson.sakta.cluster;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -50,5 +51,10 @@ public class ClusterActorRefProxy<T> implements ActorRef<T> {
     @Override
     public void stop() {
 
+    }
+
+    @Override
+    public boolean awaitStopped(Duration timeout) {
+        return true;
     }
 }

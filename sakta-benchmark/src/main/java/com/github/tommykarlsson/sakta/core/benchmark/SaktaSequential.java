@@ -8,7 +8,7 @@ import com.github.tommykarlsson.sakta.core.ActorSystem;
 public class SaktaSequential {
     static void run(int actorCount, ActorSystem actorSystem) {
 
-        try (actorSystem) {
+        try {
             CompletableFuture<Integer> completion =
                     actorSystem.getOrCreateActorRef(1, () -> new Actor(actorSystem, actorCount), Actor.class)
                             .flatAsk(a -> a.increment(1));
