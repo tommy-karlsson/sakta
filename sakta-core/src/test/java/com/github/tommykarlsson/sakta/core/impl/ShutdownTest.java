@@ -10,8 +10,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
@@ -179,6 +181,77 @@ class ShutdownTest {
 
         assertEquals(1, counter.count(), "what was sent before the shutdown should have run");
         assertThrows(RejectedExecutionException.class, () -> ref.tell(Counter::increment));
+    }
+
+    @ParameterizedTest
+    @MethodSource("schedulers")
+    void creatingAnActorAfterShutdownIsRejected(Supplier<Scheduler> scheduler) throws Exception {
+        ActorSystem system = newSystem(scheduler);
+
+        system.shutdown();
+
+        assertThrows(RejectedExecutionException.class,
+                () -> system.getOrCreateActorRef("counter", Counter::new, Counter.class));
+        assertTrue(system.awaitTermination(PATIENT));
+    }
+
+    /** An actor created while the shutdown is going through the actors must not be missed by it. */
+    @ParameterizedTest
+    @MethodSource("schedulers")
+    void anActorCreatedWhileShuttingDownIsStoppedToo(Supplier<Scheduler> scheduler) throws Exception {
+        for (int round = 0; round < 50; round++) {
+            ActorSystem system = newSystem(scheduler);
+            Thread creator = Thread.ofVirtual().start(() -> {
+                try {
+                    for (int i = 0; i < 10_000; i++) {
+                        system.getOrCreateActorRef(i, Counter::new, Counter.class);
+                    }
+                } catch (RejectedExecutionException e) {
+                    // The shutdown has been noticed.
+                }
+            });
+
+            system.shutdown();
+            creator.join();
+
+            assertTrue(system.awaitTermination(PATIENT), "every actor should stop, round " + round);
+        }
+    }
+
+    /**
+     * A send either gets in or is turned away. One that got in, even with the mailbox closing as
+     * it did, has to be answered rather than land where nobody will ever look.
+     */
+    @ParameterizedTest
+    @MethodSource("schedulers")
+    void everyAskThatGetsInIsAnsweredWhenTheShutdownRacesTheSenders(Supplier<Scheduler> scheduler) throws Exception {
+        for (int round = 0; round < 50; round++) {
+            ActorSystem system = newSystem(scheduler);
+            ActorRef<Counter> ref = system.getOrCreateActorRef("counter", Counter::new, Counter.class);
+            List<CompletableFuture<Integer>> accepted = new CopyOnWriteArrayList<>();
+            List<Thread> senders = new ArrayList<>();
+            for (int s = 0; s < 4; s++) {
+                senders.add(Thread.ofVirtual().start(() -> {
+                    try {
+                        while (true) {
+                            accepted.add(ref.ask(Counter::count));
+                        }
+                    } catch (RejectedExecutionException e) {
+                        // The mailbox has closed.
+                    }
+                }));
+            }
+
+            system.shutdown();
+            for (Thread sender : senders) {
+                sender.join();
+            }
+
+            for (CompletableFuture<Integer> ask : accepted) {
+                assertDoesNotThrow(() -> ask.get(5, TimeUnit.SECONDS), "round " + round);
+            }
+            assertTrue(system.awaitTermination(PATIENT));
+        }
     }
 
     private static ActorSystem newSystem(Supplier<Scheduler> scheduler) {
