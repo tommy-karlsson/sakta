@@ -68,6 +68,10 @@ public class ActorRefImpl<T> implements ActorRef<T> {
     /*
      * What a mailbox item runs is one of the actions below rather than a lambda, so that the frame
      * between the scheduler and the actor's own method says which kind of send it came from.
+     *
+     * They catch Throwable rather than Exception. An error that got past them would leave an ask
+     * unanswered, and would end the thread that a scheduler gives the actor, along with every
+     * message the actor has yet to get to.
      */
 
     private final class TellAction implements MailAction {
@@ -82,7 +86,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
         public void run() {
             try {
                 teller.accept(actor);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.log(Level.SEVERE, "Actor tell failed", e);
             }
         }
@@ -106,7 +110,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
             try {
                 U response = asker.apply(actor);
                 completion.complete(response);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.log(Level.SEVERE, "Actor ask failed", e);
                 completion.completeExceptionally(e);
             }
@@ -136,7 +140,7 @@ public class ActorRefImpl<T> implements ActorRef<T> {
             try {
                 CompletableFuture<U> c = asker.apply(actor);
                 c.whenComplete(new PassOnOutcome<>(completion));
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 logger.log(Level.SEVERE, "Actor ask failed", e);
                 completion.completeExceptionally(e);
             }

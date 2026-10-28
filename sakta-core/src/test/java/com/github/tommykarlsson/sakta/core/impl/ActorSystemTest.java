@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -48,6 +49,21 @@ class ActorSystemTest {
         assertEquals(ex.getCause().getClass(), ArithmeticException.class);
     }
 
+    /** An error is not an exception, but the caller still has to hear of it, and the actor live on. */
+    @Test
+    void askThatThrowsAnErrorFailsAndTheActorCarriesOn() throws Exception {
+
+        ActorRef<CounterActor> fooRef = actorSystem.getOrCreateActorRef("foo", CounterActor::new, CounterActor.class);
+
+        CompletableFuture<Integer> cf = fooRef.ask(CounterActor::fail);
+        ExecutionException ex = assertThrows(ExecutionException.class, () -> cf.get(5, TimeUnit.SECONDS));
+        assertInstanceOf(AssertionError.class, ex.getCause());
+
+        fooRef.tell(CounterActor::fail);
+        fooRef.tell(c -> c.add(1));
+        assertEquals(1, fooRef.ask(CounterActor::getCount).get(5, TimeUnit.SECONDS));
+    }
+
 
     private static class CounterActor {
 
@@ -63,6 +79,10 @@ class ActorSystemTest {
 
         int divideByZero(int value) {
             return value / 0;
+        }
+
+        int fail() {
+            throw new AssertionError("failed");
         }
     }
 }

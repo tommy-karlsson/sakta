@@ -47,7 +47,7 @@ public class SaktaAutoConfig {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "sakta.default-mailbox-type", havingValue = "unbounded")
+    @ConditionalOnProperty(name = "sakta.default-mailbox-type", havingValue = "unbounded", matchIfMissing = true)
     MailboxFactory unboundedMailboxFactory(List<MailboxFactoryDecorator> decorators) {
         MailboxFactory factory = new UnboundedMailboxFactory();
         for (MailboxFactoryDecorator decorator : decorators) {

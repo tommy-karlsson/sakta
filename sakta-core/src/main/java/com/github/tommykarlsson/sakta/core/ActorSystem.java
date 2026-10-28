@@ -56,14 +56,30 @@ public class ActorSystem {
         this.cleanable = CLEANER.register(this, new StopActors(state));
     }
 
+    /**
+     * @throws RejectedExecutionException If the actor does not exist yet and the system has been
+     *                                    shut down.
+     */
     @SuppressWarnings("unchecked")
     public <T> ActorRef<T> getOrCreateActorRef(Object address, Supplier<T> actorSupplier, Class<T> actorType) {
-        return (ActorRef<T>) state.actors
-                .computeIfAbsent(new ActorKey(address, actorType), a -> createAndStartActorRef(actorSupplier))
-                .actorRef();
+        Registration registration = state.actors
+                .computeIfAbsent(new ActorKey(address, actorType), a -> createAndStartActorRef(actorSupplier));
+        /*
+         * An actor created while a shutdown is going through the actors may be missed by it. The
+         * actor is in the map before this looks at the flag, and the shutdown sets the flag
+         * before it looks at the map, so at least one of the two sees the other and the mailbox
+         * is closed either way. Closing twice does no harm.
+         */
+        if (state.shutDown) {
+            registration.mailbox().close();
+        }
+        return (ActorRef<T>) registration.actorRef();
     }
 
     private <T> Registration createAndStartActorRef(Supplier<T> actorSupplier) {
+        if (state.shutDown) {
+            throw new RejectedExecutionException("Actor system was shut down");
+        }
         Mailbox mailbox = mailboxFactory.createMailbox();
         ActorRef<T> actorRef = new ActorRefImpl<>(actorSupplier.get(), mailbox, scheduler);
         actorRef.start();
@@ -75,7 +91,7 @@ public class ActorSystem {
      * sent. Returns without waiting for them; {@link #awaitTermination(Duration)} is the wait.
      *
      * <p>Sending to an actor after this throws {@link java.util.concurrent.RejectedExecutionException},
-     * and an ask that is rejected fails rather than never answering.
+     * and an ask that is rejected fails rather than never answering. So does creating an actor.
      */
     public void shutdown() {
         state.stopAccepting();
@@ -177,6 +193,8 @@ public class ActorSystem {
 
         private final ConcurrentMap<ActorKey, Registration> actors;
 
+        private volatile boolean shutDown;
+
         State() {
             this.actors = new ConcurrentHashMap<>();
         }
@@ -187,6 +205,7 @@ public class ActorSystem {
         }
 
         void stopAccepting() {
+            shutDown = true;
             actors.values().forEach(registration -> registration.mailbox().close());
         }
 

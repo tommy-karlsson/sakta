@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.RejectedExecutionException;
 
 import com.github.tommykarlsson.sakta.core.Disposable;
 import com.github.tommykarlsson.sakta.core.MailItem;
@@ -19,7 +20,7 @@ public abstract class AbstractBlockingQueueMailbox implements Mailbox {
 
     protected final BlockingQueue<MailItem> queue;
 
-    protected volatile boolean closed;
+    private volatile boolean closed;
 
     /**
      * Null until somebody actually listens, which for a scheduler that gives each actor a thread of
@@ -30,6 +31,38 @@ public abstract class AbstractBlockingQueueMailbox implements Mailbox {
     public AbstractBlockingQueueMailbox(BlockingQueue<MailItem> queue) {
         this.queue = queue;
     }
+
+    /**
+     * An add that finds the mailbox open may still be on its way into the queue when the mailbox
+     * closes, and land behind the marker where nobody will look. So it looks again once the item
+     * is in. Still open means the item went in ahead of the marker, since closing sets the flag
+     * before queueing the marker. Closed means it may not have, and the add takes the item back
+     * and is turned away. If the item is already gone, it was either run or discarded, and
+     * whoever is waiting on it has been told either way.
+     *
+     * <p>Checking again costs every add one read of a flag that hardly ever changes. Taking the
+     * item back costs more, but only an add that races the close pays it.
+     */
+    @Override
+    public final void add(MailItem item) {
+        if (closed) {
+            throw new RejectedExecutionException("Mailbox is closed");
+        }
+        enqueue(item);
+        if (closed && queue.remove(item)) {
+            /*
+             * Whoever is processing the mailbox may have been on its way to wait for that item,
+             * and a full queue turns the marker away when closing. Taking an item back makes room
+             * for one, and a marker too many does no harm.
+             */
+            queue.offer(CLOSED);
+            throw new RejectedExecutionException("Mailbox is closed");
+        }
+        notifyItemAdded();
+    }
+
+    /** Puts the item in the queue, by whatever rules the mailbox has for a queue that is full. */
+    protected abstract void enqueue(MailItem item);
 
     @Override
     public Runnable poll() throws InterruptedException {
@@ -51,7 +84,7 @@ public abstract class AbstractBlockingQueueMailbox implements Mailbox {
     }
 
     /** Tells whoever is listening that there is something to come for. */
-    protected void notifyItemAdded() {
+    private void notifyItemAdded() {
         List<Runnable> listeners = onAddListeners;
         if (listeners != null) {
             listeners.forEach(Runnable::run);
@@ -99,7 +132,7 @@ public abstract class AbstractBlockingQueueMailbox implements Mailbox {
         }
         List<MailItem> queued = new ArrayList<>();
         queue.drainTo(queued);
-        queued.remove(CLOSED);
+        queued.removeIf(item -> item == CLOSED);
         return queued;
     }
 }
