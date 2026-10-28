@@ -111,6 +111,17 @@ class SaktaAutoConfigTest {
         assertThat(handled).hasValue(100);
     }
 
+    /** The mailbox type has a default, so an application that does not set it still starts. */
+    @Test
+    void startsWithoutTheMailboxTypeBeingSet() {
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(SaktaAutoConfig.class, SaktaMicrometerAutoConfig.class))
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(ActorSystem.class);
+                });
+    }
+
     @Test
     void startsWithABoundedMailbox() {
         runner.withPropertyValues("sakta.default-mailbox-type=bounded").run(context -> {
